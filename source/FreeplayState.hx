@@ -1,8 +1,6 @@
 package;
 
-#if desktop
-import Discord.DiscordClient;
-#end
+import flixel.input.gamepad.FlxGamepad;
 import flash.text.TextField;
 import flixel.FlxG;
 import flixel.FlxSprite;
@@ -12,6 +10,11 @@ import flixel.math.FlxMath;
 import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import lime.utils.Assets;
+
+
+#if windows
+import Discord.DiscordClient;
+#end
 
 using StringTools;
 
@@ -24,9 +27,23 @@ class FreeplayState extends MusicBeatState
 	var curDifficulty:Int = 1;
 
 	var scoreText:FlxText;
+	var comboText:FlxText;
 	var diffText:FlxText;
+	var randomText:FlxText;
+	var randomModeText:FlxText;
+	var maniaText:FlxText;
+	var flipModeText:FlxText;
+	var bothSideText:FlxText;
+	var randomManiaText:FlxText;
+	var noteTypesText:FlxText;
+
+	var keyAmmo:Array<Int> = [4, 6, 9, 5, 7, 8, 1, 2, 3];
+	var randMania:Array<String> = ["Off", "Low Chance", "Medium Chance", "High Chance"];
+	var randNoteTypes:Array<String> = ["Off", "Low Chance", "Medium Chance", "High Chance", 'Unfair'];
+
 	var lerpScore:Int = 0;
 	var intendedScore:Int = 0;
+	var combo:String = '';
 
 	private var grpSongs:FlxTypedGroup<Alphabet>;
 	private var curPlaying:Bool = false;
@@ -39,7 +56,8 @@ class FreeplayState extends MusicBeatState
 
 		for (i in 0...initSonglist.length)
 		{
-			songs.push(new SongMetadata(initSonglist[i], 1, 'gf'));
+			var data:Array<String> = initSonglist[i].split(':');
+			songs.push(new SongMetadata(data[0], Std.parseInt(data[2]), data[1]));
 		}
 
 		/* 
@@ -50,34 +68,16 @@ class FreeplayState extends MusicBeatState
 			}
 		 */
 
-		#if desktop
-		// Updating Discord Rich Presence
-		DiscordClient.changePresence("In the Menus", null);
-		#end
+		 #if windows
+		 // Updating Discord Rich Presence
+		 DiscordClient.changePresence("In the Freeplay Menu", null);
+		 #end
 
 		var isDebug:Bool = false;
 
 		#if debug
 		isDebug = true;
 		#end
-
-		if (StoryMenuState.weekUnlocked[2] || isDebug)
-			addWeek(['Bopeebo', 'Fresh', 'Dadbattle'], 1, ['dad']);
-
-		if (StoryMenuState.weekUnlocked[2] || isDebug)
-			addWeek(['Spookeez', 'South', 'Monster'], 2, ['spooky']);
-
-		if (StoryMenuState.weekUnlocked[3] || isDebug)
-			addWeek(['Pico', 'Philly', 'Blammed'], 3, ['pico']);
-
-		if (StoryMenuState.weekUnlocked[4] || isDebug)
-			addWeek(['Satin-Panties', 'High', 'Milf'], 4, ['mom']);
-
-		if (StoryMenuState.weekUnlocked[5] || isDebug)
-			addWeek(['Cocoa', 'Eggnog', 'Winter-Horrorland'], 5, ['parents-christmas', 'parents-christmas', 'monster-christmas']);
-
-		if (StoryMenuState.weekUnlocked[6] || isDebug)
-			addWeek(['Senpai', 'Roses', 'Thorns'], 6, ['senpai', 'senpai', 'spirit']);
 
 		// LOAD MUSIC
 
@@ -91,7 +91,7 @@ class FreeplayState extends MusicBeatState
 
 		for (i in 0...songs.length)
 		{
-			var songText:Alphabet = new Alphabet(0, (70 * i) + 30, songs[i].songName, true, false);
+			var songText:Alphabet = new Alphabet(0, (70 * i) + 30, songs[i].songName, true, false, true);
 			songText.isMenuItem = true;
 			songText.targetY = i;
 			grpSongs.add(songText);
@@ -117,11 +117,46 @@ class FreeplayState extends MusicBeatState
 		scoreBG.alpha = 0.6;
 		add(scoreBG);
 
+		randomText = new FlxText(FlxG.width * 0.7, 489, 0, FlxG.save.data.randomNotes ? "Randomization On (R)" : "Randomization Off (R)", 20);
+		randomText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, RIGHT);
+
+		randomModeText = new FlxText(randomText.x, randomText.y + 32, FlxG.save.data.randomSection ? "Mode: Per Section (best for extra keys) (T)" : "Mode: Regular (T)", 16);
+		randomModeText.setFormat(Paths.font("vcr.ttf"), 14, FlxColor.WHITE, RIGHT);
+
+		randomManiaText = new FlxText(randomText.x, randomText.y + 64, "Randomly change Amount of keys: " + randMania[FlxG.save.data.randomMania] + " (Y)", 16);
+		randomManiaText.setFormat(Paths.font("vcr.ttf"), 14, FlxColor.WHITE, RIGHT);
+
+		maniaText = new FlxText(randomText.x, randomText.y + 96, "Set ammount of keys: " + keyAmmo[FlxG.save.data.mania] + " (4 = default) (U)", 24);
+		maniaText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, RIGHT);
+
+		noteTypesText = new FlxText(randomText.x, randomText.y + 128, "Randomly Place Note Types: " + randNoteTypes[FlxG.save.data.randomNoteTypes] + "(I)", 24);
+		noteTypesText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, RIGHT);
+
+		flipModeText = new FlxText(randomText.x, randomText.y + 160, FlxG.save.data.flip ? "Play as Oppenent: On (O)" : "Play as Oppenent: Off (O)", 20);
+		flipModeText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, RIGHT);
+
+		bothSideText = new FlxText(randomText.x, randomText.y + 192, FlxG.save.data.bothSide ? "Both side: On (only 4k songs, turns into 8k) (P)" : "Both side: Off (P)", 16);
+		bothSideText.setFormat(Paths.font("vcr.ttf"), 14, FlxColor.WHITE, RIGHT);
+
+		var settingsBG:FlxSprite = new FlxSprite(randomText.x - 6, 484).makeGraphic(Std.int(FlxG.width * 0.35), 300, 0xFF000000);
+		settingsBG.alpha = 0.6;
+		add(settingsBG);
 		diffText = new FlxText(scoreText.x, scoreText.y + 36, 0, "", 24);
 		diffText.font = scoreText.font;
 		add(diffText);
 
+		comboText = new FlxText(diffText.x + 100, diffText.y, 0, "", 24);
+		comboText.font = diffText.font;
+		add(comboText);
+
 		add(scoreText);
+		add(randomText);
+		add(randomModeText);
+		add(maniaText);
+		add(flipModeText);
+		add(bothSideText);
+		add(randomManiaText);
+		add(noteTypesText);
 
 		changeSelection();
 		changeDiff();
@@ -164,7 +199,7 @@ class FreeplayState extends MusicBeatState
 	public function addWeek(songs:Array<String>, weekNum:Int, ?songCharacters:Array<String>)
 	{
 		if (songCharacters == null)
-			songCharacters = ['bf'];
+			songCharacters = ['dad'];
 
 		var num:Int = 0;
 		for (song in songs)
@@ -191,10 +226,33 @@ class FreeplayState extends MusicBeatState
 			lerpScore = intendedScore;
 
 		scoreText.text = "PERSONAL BEST:" + lerpScore;
+		comboText.text = combo + '\n';
 
-		var upP = controls.UP_P;
-		var downP = controls.DOWN_P;
+		var upP = FlxG.keys.justPressed.UP;
+		var downP = FlxG.keys.justPressed.DOWN;
 		var accepted = controls.ACCEPT;
+
+		var gamepad:FlxGamepad = FlxG.gamepads.lastActive;
+
+		if (gamepad != null)
+		{
+			if (gamepad.justPressed.DPAD_UP)
+			{
+				changeSelection(-1);
+			}
+			if (gamepad.justPressed.DPAD_DOWN)
+			{
+				changeSelection(1);
+			}
+			if (gamepad.justPressed.DPAD_LEFT)
+			{
+				changeDiff(-1);
+			}
+			if (gamepad.justPressed.DPAD_RIGHT)
+			{
+				changeDiff(1);
+			}
+		}
 
 		if (upP)
 		{
@@ -205,9 +263,54 @@ class FreeplayState extends MusicBeatState
 			changeSelection(1);
 		}
 
-		if (controls.LEFT_P)
+
+		if (FlxG.keys.justPressed.R)
+		{
+			FlxG.save.data.randomNotes = !FlxG.save.data.randomNotes;
+			randomText.text = FlxG.save.data.randomNotes ? "Randomization On (R)" : "Randomization Off (R)";
+		}
+		if (FlxG.keys.justPressed.T)
+		{
+			FlxG.save.data.randomSection = !FlxG.save.data.randomSection;
+			randomModeText.text = FlxG.save.data.randomSection ? "Mode: Per Section (best for extra keys) (T)" : "Mode: Regular (T)";
+		}
+
+		if (FlxG.keys.justPressed.Y)
+			{
+				FlxG.save.data.randomMania += 1;
+				if (FlxG.save.data.randomMania > 3)
+					FlxG.save.data.randomMania = 0;
+				randomManiaText.text = "Randomly change Amount of keys: " + randMania[FlxG.save.data.randomMania] + " (Y)";
+			}
+
+		if (FlxG.keys.justPressed.U)
+		{
+			FlxG.save.data.mania += 1;
+			if (FlxG.save.data.mania > 8)
+				FlxG.save.data.mania = 0;
+			maniaText.text = "Set ammount of keys: " + keyAmmo[FlxG.save.data.mania] + " (4 = default) (U)";
+		}
+		if (FlxG.keys.justPressed.I)
+			{
+				FlxG.save.data.randomNoteTypes += 1;
+				if (FlxG.save.data.randomNoteTypes > 4)
+					FlxG.save.data.randomNoteTypes = 0;
+				noteTypesText.text = "Randomly Place Note Types: " + randNoteTypes[FlxG.save.data.randomNoteTypes] + "(I)";
+			}
+		if (FlxG.keys.justPressed.O)
+		{
+			FlxG.save.data.flip = !FlxG.save.data.flip;
+			flipModeText.text = FlxG.save.data.flip ? "Play as Oppenent: On (O)" : "Play as Oppenent: Off (O)";
+		}
+		if (FlxG.keys.justPressed.P)
+		{
+			FlxG.save.data.bothSide = !FlxG.save.data.bothSide;
+			bothSideText.text = FlxG.save.data.bothSide ? "Both side: On (only 4k songs, turns into 8k) (P)" : "Both side: Off (P)";
+		}
+
+		if (FlxG.keys.justPressed.LEFT)
 			changeDiff(-1);
-		if (controls.RIGHT_P)
+		if (FlxG.keys.justPressed.RIGHT)
 			changeDiff(1);
 
 		if (controls.BACK)
@@ -217,17 +320,51 @@ class FreeplayState extends MusicBeatState
 
 		if (accepted)
 		{
-			var poop:String = Highscore.formatSong(songs[curSelected].songName.toLowerCase(), curDifficulty);
+			if (!FlxG.keys.pressed.SHIFT)
+			{
+				// adjusting the song name to be compatible
+				var songFormat = StringTools.replace(songs[curSelected].songName, " ", "-");
+				switch (songFormat) {
+					case 'Dad-Battle': songFormat = 'Dadbattle';
+					case 'Philly-Nice': songFormat = 'Philly';
+				}
+				
+				trace(songs[curSelected].songName);
 
-			trace(poop);
+				var poop:String = Highscore.formatSong(songFormat, curDifficulty);
 
-			PlayState.SONG = Song.loadFromJson(poop, songs[curSelected].songName.toLowerCase());
-			PlayState.isStoryMode = false;
-			PlayState.storyDifficulty = curDifficulty;
+				trace(poop);
+				
+				PlayState.SONG = Song.loadFromJson(poop, songs[curSelected].songName);
+				PlayState.isStoryMode = false;
+				PlayState.storyDifficulty = curDifficulty;
+				PlayState.storyWeek = songs[curSelected].week;
+				trace('CUR WEEK' + PlayState.storyWeek);
+				LoadingState.loadAndSwitchState(new PlayState());
+			}
+			else
+			{
+				// adjusting the song name to be compatible
+				var songFormat = StringTools.replace(songs[curSelected].songName, " ", "-");
+				switch (songFormat) {
+					case 'Dad-Battle': songFormat = 'Dadbattle';
+					case 'Philly-Nice': songFormat = 'Philly';
+				}
+				
+				trace(songs[curSelected].songName);
 
-			PlayState.storyWeek = songs[curSelected].week;
-			trace('CUR WEEK' + PlayState.storyWeek);
-			LoadingState.loadAndSwitchState(new PlayState());
+				var poop:String = Highscore.formatSong(songFormat, curDifficulty);
+
+				trace(poop);
+				
+				PlayState.SONG = Song.loadFromJson(poop, songs[curSelected].songName);
+				PlayState.isStoryMode = false;
+				PlayState.storyDifficulty = curDifficulty;
+				PlayState.storyWeek = songs[curSelected].week;
+				LoadingState.loadAndSwitchState(new ChartingState());
+				Main.editor = true;
+			}
+
 		}
 	}
 
@@ -240,25 +377,25 @@ class FreeplayState extends MusicBeatState
 		if (curDifficulty > 2)
 			curDifficulty = 0;
 
+		// adjusting the highscore song name to be compatible (changeDiff)
+		var songHighscore = StringTools.replace(songs[curSelected].songName, " ", "-");
+		switch (songHighscore) {
+			case 'Dad-Battle': songHighscore = 'Dadbattle';
+			case 'Philly-Nice': songHighscore = 'Philly';
+		}
+		
 		#if !switch
-		intendedScore = Highscore.getScore(songs[curSelected].songName, curDifficulty);
+		intendedScore = Highscore.getScore(songHighscore, curDifficulty);
+		combo = Highscore.getCombo(songHighscore, curDifficulty);
 		#end
 
-		switch (curDifficulty)
-		{
-			case 0:
-				diffText.text = "EASY";
-			case 1:
-				diffText.text = 'NORMAL';
-			case 2:
-				diffText.text = "HARD";
-		}
+		diffText.text = CoolUtil.difficultyFromInt(curDifficulty).toUpperCase();
 	}
 
 	function changeSelection(change:Int = 0)
 	{
 		#if !switch
-		NGio.logEvent('Fresh');
+		// NGio.logEvent('Fresh');
 		#end
 
 		// NGio.logEvent('Fresh');
@@ -272,9 +409,18 @@ class FreeplayState extends MusicBeatState
 			curSelected = 0;
 
 		// selector.y = (70 * curSelected) + 30;
+		
+		// adjusting the highscore song name to be compatible (changeSelection)
+		// would read original scores if we didn't change packages
+		var songHighscore = StringTools.replace(songs[curSelected].songName, " ", "-");
+		switch (songHighscore) {
+			case 'Dad-Battle': songHighscore = 'Dadbattle';
+			case 'Philly-Nice': songHighscore = 'Philly';
+		}
 
 		#if !switch
-		intendedScore = Highscore.getScore(songs[curSelected].songName, curDifficulty);
+		intendedScore = Highscore.getScore(songHighscore, curDifficulty);
+		combo = Highscore.getCombo(songHighscore, curDifficulty);
 		// lerpScore = 0;
 		#end
 

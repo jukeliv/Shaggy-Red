@@ -11,12 +11,17 @@ typedef SwagSong =
 {
 	var song:String;
 	var notes:Array<SwagSection>;
-	var bpm:Int;
+	var bpm:Float;
 	var needsVoices:Bool;
 	var speed:Float;
+	var mania:Int;
+	//var noteValues:Array<Float>;
 
 	var player1:String;
 	var player2:String;
+	var gfVersion:String;
+	var noteStyle:String;
+	var stage:String;
 	var validScore:Bool;
 }
 
@@ -24,12 +29,23 @@ class Song
 {
 	public var song:String;
 	public var notes:Array<SwagSection>;
-	public var bpm:Int;
+	public var bpm:Float;
 	public var needsVoices:Bool = true;
 	public var speed:Float = 1;
+	public var mania:Int = 0;
+	//public var noteValues:Array<Float> = [0, 0.01, 0.45, 2.2, 1, 0.005]; //this never ended up working :(
+	//0 = global health drain
+	//1 = note specific health drain
+	//2 = fire note values
+	//3 = death note values
+	//4 = warning note values
+	//5 = glitch/bob arrow values
 
 	public var player1:String = 'bf';
 	public var player2:String = 'dad';
+	public var gfVersion:String = '';
+	public var noteStyle:String = '';
+	public var stage:String = '';
 
 	public function new(song, notes, bpm)
 	{
@@ -40,7 +56,18 @@ class Song
 
 	public static function loadFromJson(jsonInput:String, ?folder:String):SwagSong
 	{
-		var rawJson = Assets.getText(Paths.json(folder.toLowerCase() + '/' + jsonInput.toLowerCase())).trim();
+		trace(jsonInput);
+
+		// pre lowercasing the folder name
+		var folderLowercase = StringTools.replace(folder, " ", "-").toLowerCase();
+		switch (folderLowercase) {
+			case 'dad-battle': folderLowercase = 'dadbattle';
+			case 'philly-nice': folderLowercase = 'philly';
+		}
+		
+		trace('loading ' + folderLowercase + '/' + jsonInput.toLowerCase());
+
+		var rawJson = Assets.getText(Paths.json(folderLowercase + '/' + jsonInput.toLowerCase())).trim();
 
 		while (!rawJson.endsWith("}"))
 		{
